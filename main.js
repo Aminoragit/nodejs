@@ -16,6 +16,18 @@ var template = require('./lib/template.js');
 //Node.js는 path.parse(인자)-> 정보를 세탁해줌
 ///?id=../password.js로 하면 path.parse로 암호화되있음
 
+//뭔가를 create할때 <script>~~~</script>해버리면 간단한 해킹이 가능하고
+//대참사가 일어난다.
+//npm sanitize html해준다.
+//cmd -> npm init -> 이후 엔터로 기본값 자동입력 -> yes->
+//npm install -S sanitize-html 입력(-g는 글로벌 -S는 1개의 프로젝트에만 적용)
+//node_moduls폴더가 생성될것이다.
+
+//package.json에도 dependencies sanitize-html(ver)이 생성되어있는지 확인
+var sanitizeHtml = require('sanitize-html');
+
+
+
 var app = http.createServer(function(request,response){
     var _url = request.url;
     var queryData = url.parse(_url, true).query;
@@ -36,16 +48,22 @@ var app = http.createServer(function(request,response){
       } else {
         fs.readdir('./data', function(error, filelist){
           var filteredId = path.parse(queryData.id).base;
-          var filteredId = path.parse(queryData.id).base;
           fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
             var title = queryData.id;
+            var sanitizedTitle = sanitizeHtml(title);
+
+            //이때 sanitize에서 기본적으로 설정된 민감한 태그들(ex) <script>애들도
+            //사용자가 원하면 아래처럼 allowedTage:[태그명]으로 설정하면 사용할수 있다.
+            var sanitizedDescription = sanitizeHtml(description, {
+              allowedTags:['h1']
+            });
             var list = template.list(filelist);
-            var html = template.HTML(title, list,
-              `<h2>${title}</h2>${description}`,
+            var html = template.HTML(sanitizedTitle, list,
+              `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
               ` <a href="/create">create</a>
-                <a href="/update?id=${title}">update</a>
+                <a href="/update?id=${sanitizedTitle}">update</a>
                 <form action="delete_process" method="post">
-                  <input type="hidden" name="id" value="${title}">
+                  <input type="hidden" name="id" value="${sanitizedTitle}">
                   <input type="submit" value="delete">
                 </form>`
             );
